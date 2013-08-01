@@ -11,7 +11,8 @@ angular.module('ur.canvas', ['ur.file']).factory('ImageProjector', function() {
       image: new Image(),
       pos: { x: 0, y: 0 },
       size: { width: null, height: null },
-      scaleFactor: 0.2
+      scaleFactor: 0.2,
+      fit: "auto"
     }, options || {});
 
     pos = options.pos;
@@ -25,6 +26,8 @@ angular.module('ur.canvas', ['ur.file']).factory('ImageProjector', function() {
     var ctx = target.getContext("2d");
 
     var aspect = function() {
+    if (options.fit === "none") return size;
+
       if (image.width > image.height) {
         size.height = size.width * (image.height / image.width);
       } else {
@@ -116,7 +119,7 @@ angular.module('ur.canvas', ['ur.file']).factory('ImageProjector', function() {
       pos.y -= (delta / 4);
 
       size.width += (delta / 2);
-      size.height += (delta / 2);
+      size.height += (delta / 2 * (size.height / size.width));
       size = aspect();
       trigger('update');
       redraw();
@@ -137,6 +140,7 @@ angular.module('ur.canvas', ['ur.file']).factory('ImageProjector', function() {
         return image;
       }
       image.src = newImage;
+      redraw();
     };
     this.bind = function(event, callback) {
       if (events[event]) {
@@ -158,11 +162,12 @@ angular.module('ur.canvas', ['ur.file']).factory('ImageProjector', function() {
     template: "<canvas></canvas>",
     link: function(scope, elem, attrs, ngModel) {
 
-      var box = new ImageProjector({ target: elem[0] }), model = $parse(attrs.ngModel), scaleExpr;
+      var box       = new ImageProjector({ target: elem[0], fit: attrs.fit || "auto" }),
+          model     = $parse(attrs.ngModel),
+          scaleExpr = (attrs.scale) ? $parse(attrs.scale) : null;
 
       if (attrs.width) elem[0].width = attrs.width;
       if (attrs.height) elem[0].height = attrs.height;
-      if (attrs.scale) scaleExpr = $parse(attrs.scale);
 
       scope.$watch(attrs.ngModel, function(newVal, oldVal) {
         if (newVal && newVal instanceof File) {
@@ -170,6 +175,7 @@ angular.module('ur.canvas', ['ur.file']).factory('ImageProjector', function() {
             box.image(value);
             if (attrs.load) scope.$eval(attrs.load);
           });
+          if (!scope.$$phase) scope.$apply();
         }
       });
 
